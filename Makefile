@@ -3,6 +3,7 @@
 LIBRARY_NAME=xray
 BASE_DIR=$(shell pwd)
 SRC_DIR=$(BASE_DIR)/src
+SAMPLES_DIR=$(BASE_DIR)/samples
 BUILD_DIR?=$(BASE_DIR)/build
 INCLUDE_DIR=$(BASE_DIR)/include
 
@@ -36,6 +37,7 @@ endif
 endif
 
 $(shell mkdir -p $(BUILD_DIR))
+$(shell mkdir -p $(BUILD_DIR)/samples)
 $(shell mkdir -p $(BUILD_DIR)/runtime)
 
 CFLAGS_INTERNAL=-std=c++11
@@ -60,23 +62,36 @@ CFLAGS_INTERNAL+=-pedantic-errors
 LINKER_FLAGS+=-L$(BUILD_DIR)/
 
 SRC=$(wildcard $(SRC_DIR)/*.cpp)
+SAMPLE_SRC=$(wildcard $(SAMPLES_DIR)/*.cpp)
 
 OBJS=$(subst $(SRC_DIR),$(BUILD_DIR),$(SRC:.cpp=.o))
+SAMPLE_OBJS=$(subst $(SAMPLES_DIR),$(BUILD_DIR)/samples,$(SAMPLE_SRC:.cpp=.o))
+
+SAMPLES=$(subst $(SAMPLES_DIR),$(BUILD_DIR),$(SAMPLE_SRC:.cpp=))
 
 LIBRARY_OBJS=$(OBJS) 
-LIBRARY=$(BUILD_DIR)/$(LIBRARY_NAME).a
+LIBRARY=$(BUILD_DIR)/lib$(LIBRARY_NAME).a
 
-all: $(LIBRARY)
+all: $(LIBRARY) executables
 
-.PRECIOUS: $(BUILD_DIR)/%.o 
+
+.PRECIOUS: $(BUILD_DIR)/%.o $(BUILD_DIR)/samples/%.o
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp $(INCLUDES)
 	$(CXX) $(CFLAGS_INTERNAL) $(CFLAGS) $< -o $@ $(INCLUDE_FLAGS) -c
 
 
+$(BUILD_DIR)/samples/%.o: $(SAMPLES_DIR)/%.cpp $(INCLUDES)
+	$(CXX) $(CFLAGS) $< -o $@ $(INCLUDE_FLAGS) -c -DBASE_DIR_X=$(BASE_DIR)
+
 $(LIBRARY): $(LIBRARY_OBJS)
 	ar rv $(LIBRARY) $(LIBRARY_OBJS)
 
+$(BUILD_DIR)/sample%: $(BUILD_DIR)/samples/sample%.o $(LIBRARY)
+	$(CXX) -o $@ $< $(LINKER_FLAGS)
+
+.PHONY: executables
+executables: $(SAMPLES)
 
 clean:
 	- rm -rf $(BUILD_DIR)
