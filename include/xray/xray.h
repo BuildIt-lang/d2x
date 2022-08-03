@@ -10,6 +10,10 @@ namespace xray {
 struct source_loc {
 	std::string file;
 	int line;
+
+	// Set this to empty if not in use
+	std::string fname;
+	int foffset;
 };
 
 class xray_context {
@@ -53,7 +57,7 @@ private:
 	std::vector<std::string> string_table;
 	std::map<std::string, int> reverse_string_table;
 
-	std::vector<std::pair<int, int>> source_list;
+	std::vector<std::tuple<int, int, int, int>> source_list;
 
 	std::vector<std::pair<int, int>> source_table;
 

@@ -22,19 +22,19 @@ int main(int argc, char* argv[]) {
 	context.update_var("argv", "NULL");
 	context.set_var_here("argv", "NULL");
 
-	context.push_source_loc({BASE_DIR "/samples/sample1.txt", 1});
+	context.push_source_loc({BASE_DIR "/samples/sample1.txt", 1, "main", 0});
 	std::cout << "int main(int argc, char* argv[]) {" << std::endl;
 
 	context.nextl();
-	context.push_source_loc({BASE_DIR "/samples/sample1.txt", 2});
+	context.push_source_loc({BASE_DIR "/samples/sample1.txt", 2, "main", 1});
 	std::cout << "\tprintf(\"Hello\\n\");" << std::endl;
 	
 	context.nextl();
-	context.push_source_loc({BASE_DIR "/samples/sample1.txt", 3});
+	context.push_source_loc({BASE_DIR "/samples/sample1.txt", 3, "main", 2});
 	std::cout << "\treturn 0;" << std::endl;
 
 	context.nextl();
-	context.push_source_loc({BASE_DIR "/samples/sample1.txt", 3});
+	context.push_source_loc({BASE_DIR "/samples/sample1.txt", 3, "main", 2});
 	std::cout << "}" << std::endl;
 		
 

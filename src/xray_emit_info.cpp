@@ -18,6 +18,8 @@ in an offset into this array. The size is as much as in required by the source_s
 struct xray_source_loc {
 	int filename;
 	int linenumber;
+	int functionname;
+	int foffset;
 }
 
 3. The third object is a string list which is just an array of char*. All string variables are just offsets into 
@@ -39,7 +41,7 @@ struct xray_function_header {
 	char** string_table; // points to 3
 }
 
-5. After this finally there is a single pointer to the function_header that is placed in a special XRAY_entry section 
+5. Finally there is a constructor call to xray_register_header
 */
 
 
@@ -67,21 +69,23 @@ void xray_context::emit_function_info(std::ostream &oss) {
 			std::string name = frame.file;
 			int line = frame.line;
 			int name_id = get_string_id(name);
-			source_list.push_back(std::make_pair(name_id, line));	
+			int fname_id = get_string_id(frame.fname);
+			int fline = frame.foffset;
+			source_list.push_back(std::make_tuple(name_id, line, fname_id, fline));	
 		}		
 	}
 
 	// Emit 1
-	oss << "struct xray_source_stack xray_" << current_function_name << "_source_table[] = {\n";
+	oss << "struct xray::runtime::xray_source_stack xray_" << current_function_name << "_source_table[] = {\n";
 	for (auto v: source_table) {
 		oss << ident_char << "{" << v.first << ", " << v.second << "},\n";
 	}
 	oss << "};\n";
 
 	// Emit 2
-	oss << "struct xray_source_loc xray_" << current_function_name << "_source_list[] = {\n";
+	oss << "struct xray::runtime::xray_source_loc xray_" << current_function_name << "_source_list[] = {\n";
 	for (auto v: source_list) {
-		oss << ident_char << "{" << v.first << ", " << v.second << "},\n";
+		oss << ident_char << "{" << std::get<0>(v) << ", " << std::get<1>(v) << ", " << std::get<2>(v) << ", " << std::get<3>(v) << "},\n";
 	}
 	oss << "};\n";
 	
@@ -93,7 +97,7 @@ void xray_context::emit_function_info(std::ostream &oss) {
 	oss << "};\n";
 
 	// Emit 4		
-	oss << "struct xray_function_header xray_" << current_function_name << "_function_header = {\n";
+	oss << "struct xray::runtime::xray_function_header xray_" << current_function_name << "_function_header = {\n";
 	// TODO: Change this to take/compute a separate function address expression
 	// For now we assume all functions are C style functions and the address expression is simply the name
 	oss << ident_char << "(unsigned long long)" << current_function_name << ", \n";
@@ -106,9 +110,12 @@ void xray_context::emit_function_info(std::ostream &oss) {
 	oss << "};\n";
 
 	// Emit 5
-	oss << "struct xray_function_header* xray_" << current_function_name << "_function_header_entry __attribute__"
-		"((section(\"" << debug_entry_section << "\"))) = &xray_" << current_function_name << "_function_header" 
-		";\n";
+	//oss << "struct xray::xray_function_header* xray_" << current_function_name << "_function_header_entry __attribute__"
+		//"((section(\"" << debug_entry_section << "\"))) = &xray_" << current_function_name << "_function_header" 
+		//";\n";
+	
+	oss << "static struct xray::runtime::xray_register_header xray_" << current_function_name << "_function_header_entry"
+		" (&xray_" << current_function_name << "_function_header);\n";
 
 
 	oss << "/*  End debug information for function: " << current_function_name << " */\n";		

@@ -1,0 +1,17 @@
+define xctx
+	print xray::runtime::find_context((uint64_t)$rip, (uint64_t)$rsp)
+end
+define xbt
+	call xray::runtime::cmd::xbt((uint64_t)$rip, (int64_t)$rsp)
+end
+define xlist
+	call xray::runtime::cmd::xlist((uint64_t)$rip, (int64_t)$rsp)
+end
+define xframe
+	if $argc == 0
+		call xray::runtime::cmd::xframe((uint64_t)$rip, (int64_t)$rsp, "")
+	end
+	if $argc == 1
+		call xray::runtime::cmd::xframe((uint64_t)$rip, (int64_t)$rsp, "$arg0")
+	end	
+end
