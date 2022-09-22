@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
 
 	xray::xray_context context;
 	
-	context.begin_function("main");
+	std::cout << context.begin_section();
 	
 	context.create_var("argc");
 	context.create_var("argv");
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
 		
 
 	context.emit_function_info(std::cout);
-	context.end_function();
+	context.end_section();
 
 	return 0;
 }

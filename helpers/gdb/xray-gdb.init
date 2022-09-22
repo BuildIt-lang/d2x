@@ -1,17 +1,28 @@
 define xctx
-	print xray::runtime::find_context((uint64_t)$rip, (uint64_t)$rsp)
+	print xray::runtime::find_context((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx)
 end
 define xbt
-	call xray::runtime::cmd::xbt((uint64_t)$rip, (int64_t)$rsp)
+	call xray::runtime::cmd::xbt((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx)
 end
 define xlist
-	call xray::runtime::cmd::xlist((uint64_t)$rip, (int64_t)$rsp)
+	call xray::runtime::cmd::xlist((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx)
 end
 define xframe
 	if $argc == 0
-		call xray::runtime::cmd::xframe((uint64_t)$rip, (int64_t)$rsp, "")
+		call xray::runtime::cmd::xframe((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx, "")
 	end
 	if $argc == 1
-		call xray::runtime::cmd::xframe((uint64_t)$rip, (int64_t)$rsp, "$arg0")
+		call xray::runtime::cmd::xframe((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx, "$arg0")
 	end	
+end
+define xvars
+	if $argc == 0
+		call xray::runtime::cmd::xvars((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx, "")
+	end
+	if $argc == 1
+		call xray::runtime::cmd::xvars((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx, "$arg0")
+	end	
+end
+define xfvl 	
+	call xray::runtime::cmd::xfvl((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx, "$arg0")
 end

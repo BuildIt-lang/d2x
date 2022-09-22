@@ -1,11 +1,15 @@
 -include Makefile.inc
 
+
+
 LIBRARY_NAME=xray
 BASE_DIR=$(shell pwd)
 SRC_DIR=$(BASE_DIR)/src
 SAMPLES_DIR=$(BASE_DIR)/samples
 BUILD_DIR?=$(BASE_DIR)/build
 INCLUDE_DIR=$(BASE_DIR)/include
+
+BUILDIT_DIR?=$(BASE_DIR)/deps/buildit
 
 INCLUDES=$(wildcard $(INCLUDE_DIR)/*.h) $(wildcard $(INCLUDE_DIR)/*/*.h) 
 
@@ -18,6 +22,9 @@ ifeq ($(MAKECMDGOALS), compile-flags)
 CHECK_CONFIG=0
 endif
 ifeq ($(MAKECMDGOALS), linker-flags)
+CHECK_CONFIG=0
+endif
+ifeq ($(MAKECMDGOALS), gdb-command)
 CHECK_CONFIG=0
 endif
 
@@ -56,10 +63,10 @@ endif
 
 
 CFLAGS_INTERNAL+=-Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wmissing-declarations -Woverloaded-virtual -Wno-deprecated -Wdelete-non-virtual-dtor -Werror -Wno-vla 
-INCLUDE_FLAGS=-I$(INCLUDE_DIR) 
+INCLUDE_FLAGS=-I$(INCLUDE_DIR) -I$(BUILDIT_DIR)/include/
 CFLAGS_INTERNAL+=-pedantic-errors
 
-LINKER_FLAGS+=-L$(BUILD_DIR)/
+LINKER_FLAGS+=-L$(BUILD_DIR)/ -L$(BUILDIT_DIR)/build/ -lbuildit
 
 SRC=$(wildcard $(SRC_DIR)/*.cpp)
 SAMPLE_SRC=$(wildcard $(SAMPLES_DIR)/*.cpp)
@@ -102,3 +109,5 @@ compile-flags:
 
 linker-flags:
 	@echo $(LINKER_FLAGS)
+gdb-command:
+	@echo gdb --command=$(BASE_DIR)/helpers/gdb/xray-gdb.init
