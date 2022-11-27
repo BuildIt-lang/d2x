@@ -1,3 +1,3 @@
-## X-Ray
+## D2X
 
-A portable and customizable debugging framework for DSLs. 
+An eXtensible conteXtual Debugger for modern DSLs
