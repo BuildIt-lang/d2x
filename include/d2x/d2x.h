@@ -1,5 +1,5 @@
-#ifndef XRAY_H
-#define XRAY_H
+#ifndef D2X_H
+#define D2X_H
 #include <string>
 #include <vector>
 #include <map>
@@ -11,7 +11,7 @@
 #include "blocks/rce.h"
 #include <functional>
 
-namespace xray {
+namespace d2x {
 
 struct source_loc {
 	std::string file;
@@ -36,7 +36,7 @@ public:
         handler_t handler;
 	std::string resolver_name;
 	runtime_value_resolver(handler_t handler): handler(handler) {
-		resolver_name = "xray_resolver_" + std::to_string(resolver_counter);
+		resolver_name = "d2x_resolver_" + std::to_string(resolver_counter);
 		resolver_counter++;
 	}
 	void gen_resolver(void) {
@@ -53,7 +53,7 @@ struct value_pair {
 	runtime_value_resolver* rvalue;
 };
 
-class xray_context {
+class d2x_context {
 	std::string current_anchor_name;
 	int anchor_counter = 0;	
 	int current_anchor_counter;
@@ -71,11 +71,11 @@ class xray_context {
 	std::vector<std::map<std::string, value_pair>> live_vars;
 
 	const char* ident_char = "\t";	
-	const char* debug_entry_section = "XRAY_entry";
+	const char* debug_entry_section = "D2X_entry";
 
 
 public:
-	xray_context();
+	d2x_context();
 
 	void reset_context(void);
 

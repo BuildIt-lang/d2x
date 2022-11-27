@@ -1,14 +1,14 @@
-#include "xray/xray.h"
+#include "d2x/d2x.h"
 #include <utility>
 #include "blocks/c_code_generator.h"
-namespace xray {
+namespace d2x {
 
-/* XRay generates the following objects for each function info that it emits
+/* D2X generates the following objects for each function info that it emits
 
 1.a The very first object we have is a source_table which is an array of source_stack of size number of lines
 in the function
 
-struct xray_source_stack {
+struct d2x_source_stack {
 	int stack_size;
 	int stack_offset;
 }
@@ -16,7 +16,7 @@ struct xray_source_stack {
 1.b The second object is the source_list which is an array of source_loc. The stack_offset in source_stack
 in an offset into this array. The size is as much as is required by the source_stack
 
-struct xray_source_loc {
+struct d2x_source_loc {
 	int filename;
 	int linenumber;
 	int functionname;
@@ -25,7 +25,7 @@ struct xray_source_loc {
 
 2.a The next object is var_table which is an array of var_stack of size number of lines in the function
 
-struct xray_var_stack {
+struct d2x_var_stack {
 	int stack_size;
 	int stack_offset;
 }
@@ -33,7 +33,7 @@ struct xray_var_stack {
 2.b The next object is the var_list which is an array of var_entry. The stack_offset in var_stack is an offset into
 this array. The size is as much as is required by the var_stack
 
-struct xray_var_entry {
+struct d2x_var_entry {
 	int varname;
 	int varvalue;
 	unsigned long long rvarvalue;
@@ -45,20 +45,20 @@ this table.
 4. After this we have a function_header which just has back pointers and sizes for above arrays. This also has information
 about the function itself.
 
-struct xray_function_header {
+struct d2x_function_header {
 	void (*)(void) function_addr; // start address of the function for matching
 
 	int source_table_len; // Equal to number of lines in the function
-	struct xray_source_stack* source_table; // points to 1.a
+	struct d2x_source_stack* source_table; // points to 1.a
 
 	int source_list_len;
-	struct xray_source_loc* source_list; // points to 1.b
+	struct d2x_source_loc* source_list; // points to 1.b
 
 	int var_table_len; // Equal to number of lines in the function
-	struct xray_var_stack* var_table; // points to 2.a
+	struct d2x_var_stack* var_table; // points to 2.a
 	
 	int var_list_len;
-	struct xray_var_entry* var_list // points to 2.b
+	struct d2x_var_entry* var_list // points to 2.b
 
 	int string_table_len;
 	char** string_table; // points to 3
@@ -69,11 +69,11 @@ struct xray_function_header {
 	int identified_line;
 }
 
-5. Finally there is a constructor call to xray_register_header
+5. Finally there is a constructor call to d2x_register_header
 */
 
 
-int xray_context::get_string_id(std::string s) {
+int d2x_context::get_string_id(std::string s) {
 	if (reverse_string_table.find(s) != reverse_string_table.end()) {
 		return reverse_string_table[s];
 	}
@@ -84,7 +84,7 @@ int xray_context::get_string_id(std::string s) {
 }
 
 
-void xray_context::emit_function_info(std::ostream &oss) {
+void d2x_context::emit_function_info(std::ostream &oss) {
 	oss << "/*  Begin debug information for section: " << current_anchor_counter << " */\n";		
 	string_table.clear();
 	reverse_string_table.clear();
@@ -136,7 +136,7 @@ void xray_context::emit_function_info(std::ostream &oss) {
 
 
 	// Emit 1.a
-	oss << "static struct xray::runtime::xray_source_stack xray_" << current_anchor_counter << "_source_table[] = {\n";
+	oss << "static struct d2x::runtime::d2x_source_stack d2x_" << current_anchor_counter << "_source_table[] = {\n";
 	int index = 0;
 	for (auto v: emit_source_table) {
 		oss << ident_char << "{" << v.first << ", " << v.second << "}, //" << index << "\n";
@@ -146,7 +146,7 @@ void xray_context::emit_function_info(std::ostream &oss) {
 
 	// Emit 1.b
 	index = 0;
-	oss << "static struct xray::runtime::xray_source_loc xray_" << current_anchor_counter << "_source_list[] = {\n";
+	oss << "static struct d2x::runtime::d2x_source_loc d2x_" << current_anchor_counter << "_source_list[] = {\n";
 	for (auto v: emit_source_list) {
 		oss << ident_char << "{" << std::get<0>(v) << ", " << std::get<1>(v) << ", " << std::get<2>(v) << ", " << std::get<3>(v) << "}, //" << index << "\n";
 		index++;
@@ -154,14 +154,14 @@ void xray_context::emit_function_info(std::ostream &oss) {
 	oss << "};\n";
 
 	// Emit 2.a
-	oss << "static struct xray::runtime::xray_var_stack xray_" << current_anchor_counter << "_var_table[] = {\n";
+	oss << "static struct d2x::runtime::d2x_var_stack d2x_" << current_anchor_counter << "_var_table[] = {\n";
 	for (auto v: emit_var_table) {
 		oss << ident_char << "{" << v.first << ", " << v.second << "},\n";
 	}
 	oss << "};\n";
 
 	// Emit 2.b
-	oss << "static struct xray::runtime::xray_var_entry xray_" << current_anchor_counter << "_var_list[] = {\n";
+	oss << "static struct d2x::runtime::d2x_var_entry d2x_" << current_anchor_counter << "_var_list[] = {\n";
 	for (auto v: emit_var_list) {
 		if (v.second.second == nullptr)
 			oss << ident_char << "{" << v.first << ", " << v.second.first << ", 0},\n";
@@ -171,29 +171,29 @@ void xray_context::emit_function_info(std::ostream &oss) {
 	oss << "};\n";
 	
 	// Emit 3
-	oss << "static const char* xray_" << current_anchor_counter << "_string_table[] = {\n";
+	oss << "static const char* d2x_" << current_anchor_counter << "_string_table[] = {\n";
 	for (auto v: string_table) {
 		oss << ident_char << "\"" << v << "\",\n";
 	}
 	oss << "};\n";
 
 	// Emit 4		
-	oss << "static struct xray::runtime::xray_function_header xray_" << current_anchor_counter << "_function_header = {\n";
+	oss << "static struct d2x::runtime::d2x_function_header d2x_" << current_anchor_counter << "_function_header = {\n";
 	// TODO: Change this to take/compute a separate function address expression
 	// For now we assume all functions are C style functions and the address expression is simply the name
 	oss << ident_char << "(unsigned long long)" << current_anchor_name << ", \n";
 	oss << ident_char << (int)emit_source_table.size() << ", \n";
-	oss << ident_char << "xray_" << current_anchor_counter << "_source_table" << ", \n";
+	oss << ident_char << "d2x_" << current_anchor_counter << "_source_table" << ", \n";
 	oss << ident_char << (int)emit_source_list.size() << ", \n";
-	oss << ident_char << "xray_" << current_anchor_counter << "_source_list" << ", \n";
+	oss << ident_char << "d2x_" << current_anchor_counter << "_source_list" << ", \n";
 
 	oss << ident_char << (int)emit_var_table.size() << ", \n";
-	oss << ident_char << "xray_" << current_anchor_counter << "_var_table" << ", \n";
+	oss << ident_char << "d2x_" << current_anchor_counter << "_var_table" << ", \n";
 	oss << ident_char << (int)emit_var_list.size() << ", \n";
-	oss << ident_char << "xray_" << current_anchor_counter << "_var_list" << ", \n";
+	oss << ident_char << "d2x_" << current_anchor_counter << "_var_list" << ", \n";
 
 	oss << ident_char << (int)string_table.size() << ", \n";
-	oss << ident_char << "xray_" << current_anchor_counter << "_string_table" << ", \n";
+	oss << ident_char << "d2x_" << current_anchor_counter << "_string_table" << ", \n";
 
 	// Scratch values initialized to NULL and -1 
 	oss << ident_char << "NULL, \n";
@@ -203,8 +203,8 @@ void xray_context::emit_function_info(std::ostream &oss) {
 
 	// Emit 5
 	
-	oss << "static struct xray::runtime::xray_register_header xray_" << current_anchor_counter << "_function_header_entry"
-		" (&xray_" << current_anchor_counter << "_function_header);\n";
+	oss << "static struct d2x::runtime::d2x_register_header d2x_" << current_anchor_counter << "_function_header_entry"
+		" (&d2x_" << current_anchor_counter << "_function_header);\n";
 
 
 	oss << "/*  End debug information for section: " << current_anchor_counter << " */\n";		

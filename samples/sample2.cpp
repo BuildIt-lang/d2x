@@ -1,16 +1,18 @@
-#include "xray/xray.h"
+#include "d2x/d2x.h"
 #include <iostream>
 
 #define STR1(x)  #x
 #define STR(x)  STR1(x)
 #define BASE_DIR STR(BASE_DIR_X)
 
+static builder::dyn_var<char*(int*)> to_str(builder::as_global("std::to_string"));	
+
 int main(int argc, char* argv[]) {
 
 	std::cout << "#include <stdio.h>\n";
-	std::cout << "#include \"xray_runtime/xray_runtime.h\"\n";
+	std::cout << "#include \"d2x_runtime/d2x_runtime.h\"\n";
 
-	xray::xray_context context;
+	d2x::d2x_context context;
 	
 	std::cout << context.begin_section();
 	
@@ -18,11 +20,10 @@ int main(int argc, char* argv[]) {
 	std::cout << "int main(int argc, char* argv[]) {" << std::endl;
 	context.nextl();
 
-	builder::dyn_var<char*(int*)> to_str(builder::with_name("std::to_string"));	
 
-	xray::runtime_value_resolver r1 ([&](auto v) -> auto {
+	d2x::runtime_value_resolver r1 ([&](auto v) -> auto {
 		//return "Value of " + v;
-		builder::dyn_var<int*> addr = xray::rt::find_stack_var(v);
+		builder::dyn_var<int*> addr = d2x::rt::find_stack_var(v);
 		return "Value of " + v + " = " + to_str(addr[0]);
 	});
 

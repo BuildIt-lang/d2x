@@ -1,3 +1,0 @@
-[submodule "deps/buildit"]
-	path = deps/buildit
-	url = https://github.com/BuildIt-lang/buildit.git

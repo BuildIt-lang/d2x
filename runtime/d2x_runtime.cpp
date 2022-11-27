@@ -1,4 +1,4 @@
-#include "xray_runtime/xray_runtime.h"
+#include "d2x_runtime/d2x_runtime.h"
 #include <unistd.h>
 #include <fcntl.h>
 #include <map>
@@ -11,10 +11,10 @@
 #include <libunwind.h>
 
 
-namespace xray {
+namespace d2x {
 namespace runtime {
 
-std::vector<xray_function_header*> *registered_function_headers = nullptr;
+std::vector<d2x_function_header*> *registered_function_headers = nullptr;
 
 
 static std::map<std::string, Dwarf_Debug> debug_map;
@@ -152,11 +152,11 @@ cleanup:
 
 static void* last_ip = NULL;
 static void* last_sp = NULL;
-static struct xray_context last_ctx;
+static struct d2x_context last_ctx;
 static int current_frame_index = 0;
 static int config_list_offset = 2;
 
-struct xray_context find_context(void* ip, void* sp, void* bp, void* bx) {
+struct d2x_context find_context(void* ip, void* sp, void* bp, void* bx) {
 	if (last_ip == ip && last_sp == sp) 
 		return last_ctx;
 	else {
@@ -166,9 +166,9 @@ struct xray_context find_context(void* ip, void* sp, void* bp, void* bx) {
 	last_ip = ip;
 	last_sp = sp;
 
-	xray_headers_init();
+	d2x_headers_init();
 
-	struct xray_context &ctx = last_ctx;
+	struct d2x_context &ctx = last_ctx;
 
 	ctx.rip = (uint64_t) ip;
 	ctx.rsp = (uint64_t) sp;
@@ -241,7 +241,7 @@ static std::string basename(const std::string& pathname)
             pathname.end()};
 }
 
-std::string get_backtrace(struct xray_context ctx) {
+std::string get_backtrace(struct d2x_context ctx) {
 	if (ctx.header == nullptr)
 		return "";
 	if (ctx.address_line == -1 || ctx.function_line == -1)
@@ -250,11 +250,11 @@ std::string get_backtrace(struct xray_context ctx) {
 	std::stringstream oss;
 	int line_offset = ctx.address_line - ctx.function_line;
 
-	struct xray_source_stack stack = ctx.header->source_table[line_offset];
-	struct xray_source_loc *locs = ctx.header->source_list;
+	struct d2x_source_stack stack = ctx.header->source_table[line_offset];
+	struct d2x_source_loc *locs = ctx.header->source_list;
 	const char** string_table = ctx.header->string_table;
 	for (int i = 0; i < stack.stack_size; i++) {
-		struct xray_source_loc loc = locs[i + stack.stack_offset];
+		struct d2x_source_loc loc = locs[i + stack.stack_offset];
 		if (loc.foffset != -1)
 			oss << "#" << i << " in " << string_table[loc.function] << ":" << loc.foffset << " at " << basename(string_table[loc.filename]) << ":" << loc.linenumber << "\n";
 		else
@@ -263,7 +263,7 @@ std::string get_backtrace(struct xray_context ctx) {
 	return oss.str();
 }
 
-std::string get_listing(struct xray_context ctx) {
+std::string get_listing(struct d2x_context ctx) {
 	if (ctx.header == nullptr)
 		return "";
 	if (ctx.address_line == -1 || ctx.function_line == -1)
@@ -271,10 +271,10 @@ std::string get_listing(struct xray_context ctx) {
 
 	std::stringstream oss;
 	int line_offset = ctx.address_line - ctx.function_line;
-	struct xray_source_stack stack = ctx.header->source_table[line_offset];
-	struct xray_source_loc *locs = ctx.header->source_list;
+	struct d2x_source_stack stack = ctx.header->source_table[line_offset];
+	struct d2x_source_loc *locs = ctx.header->source_list;
 	const char** string_table = ctx.header->string_table;
-	struct xray_source_loc loc = locs[current_frame_index + stack.stack_offset];
+	struct d2x_source_loc loc = locs[current_frame_index + stack.stack_offset];
 	int linenumber = loc.linenumber;
 	int bline = linenumber - config_list_offset;
 	if (bline < 0)
@@ -303,7 +303,7 @@ std::string get_listing(struct xray_context ctx) {
 }
 
 
-std::string get_frame(struct xray_context ctx, const char* update_frame) {
+std::string get_frame(struct d2x_context ctx, const char* update_frame) {
 	int new_frame = -1;
 	if (strcmp(update_frame, "")) {
 		if (sscanf(update_frame, "%d", &new_frame) != 1) {
@@ -317,16 +317,16 @@ std::string get_frame(struct xray_context ctx, const char* update_frame) {
 
 	std::stringstream oss;
 	int line_offset = ctx.address_line - ctx.function_line;
-	struct xray_source_stack stack = ctx.header->source_table[line_offset];
+	struct d2x_source_stack stack = ctx.header->source_table[line_offset];
 	if (new_frame > 0) {
 		if (new_frame < stack.stack_size) 
 			current_frame_index = new_frame;
 		else 
 			oss << "Warning: xFrame index " << new_frame << " is not valid. xFrame not updated\n";
 	}
-	struct xray_source_loc *locs = ctx.header->source_list;
+	struct d2x_source_loc *locs = ctx.header->source_list;
 	const char** string_table = ctx.header->string_table;
-	struct xray_source_loc loc = locs[current_frame_index + stack.stack_offset];
+	struct d2x_source_loc loc = locs[current_frame_index + stack.stack_offset];
 	int linenumber = loc.linenumber;
 
 	if (loc.foffset != -1) 
@@ -352,7 +352,7 @@ std::string get_frame(struct xray_context ctx, const char* update_frame) {
 
 
 
-static struct xray_context* active_frame_ctx = nullptr;
+static struct d2x_context* active_frame_ctx = nullptr;
 
 static std::string find_die_name(Dwarf_Debug dbg, Dwarf_Die die) {
 	char* name = NULL;
@@ -545,7 +545,7 @@ static void* find_var_address_in_die(Dwarf_Debug dbg, Dwarf_Die die, uint64_t pc
 	return NULL;
 }
 
-static void* find_var_loc(struct xray_context ctx, const char* varname) {
+static void* find_var_loc(struct d2x_context ctx, const char* varname) {
 
 	void* ret_val = NULL;
 
@@ -581,7 +581,7 @@ cleanup:
 	return ret_val;	
 }
 
-std::string get_fvl(struct xray_context ctx, const char* varname) {
+std::string get_fvl(struct d2x_context ctx, const char* varname) {
 	std::stringstream oss;
 	oss << "&" << varname << " = " << find_var_loc(ctx, varname) << std::endl;
 	return oss.str();
@@ -593,7 +593,7 @@ namespace rtv {
 	}
 }
 
-std::string get_vars(struct xray_context ctx, const char* varname) {
+std::string get_vars(struct d2x_context ctx, const char* varname) {
 	if (ctx.header == nullptr)
 		return "";
 	if (ctx.address_line == -1 || ctx.function_line == -1)
@@ -602,8 +602,8 @@ std::string get_vars(struct xray_context ctx, const char* varname) {
 	std::stringstream oss;
 
 	int line_offset = ctx.address_line - ctx.function_line;
-	struct xray_var_stack stack = ctx.header->var_table[line_offset];
-	struct xray_var_entry *vars = ctx.header->var_list;
+	struct d2x_var_stack stack = ctx.header->var_table[line_offset];
+	struct d2x_var_entry *vars = ctx.header->var_list;
 	const char** string_table = ctx.header->string_table;
 	
 	int tofind = 0;	

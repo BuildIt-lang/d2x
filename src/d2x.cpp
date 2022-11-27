@@ -1,14 +1,14 @@
-#include "xray/xray.h"
+#include "d2x/d2x.h"
 
-namespace xray {
+namespace d2x {
 
 namespace rt {
 const char string_t_name[] = "std::string";
-builder::dyn_var<void* (string)> find_stack_var(builder::with_name("xray::runtime::rtv::find_stack_var"));
+builder::dyn_var<void* (string)> find_stack_var(builder::as_global("d2x::runtime::rtv::find_stack_var"));
 }
 int runtime_value_resolver::resolver_counter = 0;
 
-void xray_context::reset_context(void) {
+void d2x_context::reset_context(void) {
 	source_loc_table.clear();
 	var_table.clear();
 	live_vars.clear();
@@ -17,12 +17,12 @@ void xray_context::reset_context(void) {
 	var_table.resize(current_line_number + 1);
 }
 
-xray_context::xray_context() {
+d2x_context::d2x_context() {
 	reset_context();
 }
-std::string xray_context::begin_section(void) {
+std::string d2x_context::begin_section(void) {
 	reset_context();
-	current_anchor_name = "xray_section_anchor_" + std::to_string(anchor_counter);
+	current_anchor_name = "d2x_section_anchor_" + std::to_string(anchor_counter);
 	current_anchor_counter = anchor_counter;
 	anchor_counter++;
 
@@ -30,19 +30,19 @@ std::string xray_context::begin_section(void) {
 	return "static void " + current_anchor_name + "(void) {}\n";
 }
 
-void xray_context::end_section(void) {
+void d2x_context::end_section(void) {
 	current_anchor_name = "";
 	current_line_number = -1;	
 }
 
-void xray_context::nextl(void) {
+void d2x_context::nextl(void) {
 	current_line_number++;
 	var_table.resize(current_line_number + 1);
 	source_loc_table.resize(current_line_number + 1);
 	insert_live_vars();
 }
 
-void xray_context::push_source_loc(source_loc loc) {
+void d2x_context::push_source_loc(source_loc loc) {
 	// We are currently not insider any function
 	if (current_line_number == -1) 
 		return;
@@ -51,25 +51,25 @@ void xray_context::push_source_loc(source_loc loc) {
 	source_loc_table[current_line_number].push_back(loc);		
 }
 
-void xray_context::push_var_scope(void) {
+void d2x_context::push_var_scope(void) {
 	live_vars.push_back(std::map<std::string, value_pair>());	
 }
-void xray_context::pop_var_scope(void) {
+void d2x_context::pop_var_scope(void) {
 	live_vars.pop_back();
 }
 
-void xray_context::create_var(std::string vname) {
+void d2x_context::create_var(std::string vname) {
 	value_pair v;
 	v.value = "";
 	v.rvalue = nullptr;
 	live_vars.back()[vname] = v;
 }
 
-void xray_context::delete_var(std::string vname) {
+void d2x_context::delete_var(std::string vname) {
 	live_vars.back().erase(vname);
 }
 
-void xray_context::insert_live_vars(void) {
+void d2x_context::insert_live_vars(void) {
 	auto &current = var_table.back();
 	// Update values walking scopes backwards
 	for (int i = (int)live_vars.size() - 1; i >= 0; i--) {
@@ -82,7 +82,7 @@ void xray_context::insert_live_vars(void) {
 	}
 }
 
-void xray_context::update_var(std::string vname, std::string value) {
+void d2x_context::update_var(std::string vname, std::string value) {
 	// Update values walking scopes backwards
 	for (int i = (int)live_vars.size() - 1; i >= 0; i--) {
 		if (live_vars[i].find(vname) != live_vars[i].end()) {
@@ -94,7 +94,7 @@ void xray_context::update_var(std::string vname, std::string value) {
 		}
 	}
 }
-void xray_context::update_var(std::string vname, runtime_value_resolver& r) {
+void d2x_context::update_var(std::string vname, runtime_value_resolver& r) {
 	// Update values walking scopes backwards
 	for (int i = (int)live_vars.size() - 1; i >= 0; i--) {
 		if (live_vars[i].find(vname) != live_vars[i].end()) {
@@ -107,14 +107,14 @@ void xray_context::update_var(std::string vname, runtime_value_resolver& r) {
 	}
 }
 
-void xray_context::set_var_here(std::string vname, std::string value) {
+void d2x_context::set_var_here(std::string vname, std::string value) {
 	value_pair v;
 	v.value = value;
 	v.rvalue = nullptr;
 	var_table.back()[vname] = v;
 }
 
-void xray_context::set_var_here(std::string vname, runtime_value_resolver& resolver) {
+void d2x_context::set_var_here(std::string vname, runtime_value_resolver& resolver) {
 	value_pair v;
 	v.value = "";
 	v.rvalue = &resolver;

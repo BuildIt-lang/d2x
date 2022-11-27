@@ -1,5 +1,5 @@
-#ifndef XRAY_RUNTIME_H
-#define XRAY_RUNTIME_H
+#ifndef D2X_RUNTIME_H
+#define D2X_RUNTIME_H
 #include <iostream>
 #include <vector>
 #include <stdint.h>
@@ -9,45 +9,45 @@
 #include <libdwarf/dwarf.h>
 #include <libdwarf/libdwarf.h>
 
-namespace xray {
+namespace d2x {
 namespace runtime {
 
-struct xray_source_stack {
+struct d2x_source_stack {
 	int stack_size;
 	int stack_offset;
 };
-struct xray_source_loc {
+struct d2x_source_loc {
 	int filename;
 	int linenumber;
 	int function;
 	int foffset;
 };
 
-struct xray_var_stack {
+struct d2x_var_stack {
 	int stack_size;
 	int stack_offset;
 };
 
-struct xray_var_entry {
+struct d2x_var_entry {
 	int varname;
 	int varvalue;
 	unsigned long long rvarvalue;
 };
 
-struct xray_function_header {
+struct d2x_function_header {
 	unsigned long long function_addr; // start address of the function for matching
 
 	int source_table_len; // Equal to number of lines in the function
-	struct xray_source_stack* source_table; // points to 1.a
+	struct d2x_source_stack* source_table; // points to 1.a
 
 	int source_list_len;
-	struct xray_source_loc* source_list; // points to 1.b
+	struct d2x_source_loc* source_list; // points to 1.b
 
 	int var_table_len;
-	struct xray_var_stack* var_table; // points to 2.a
+	struct d2x_var_stack* var_table; // points to 2.a
 	
 	int var_list_len;
-	struct xray_var_entry* var_list; // points to 2.b
+	struct d2x_var_entry* var_list; // points to 2.b
 
 	int string_table_len;
 	const char** string_table; // points to 3
@@ -57,21 +57,21 @@ struct xray_function_header {
 	int identified_line;
 };
 
-extern std::vector<xray_function_header*> *registered_function_headers;
-static void xray_headers_init(void) {
+extern std::vector<d2x_function_header*> *registered_function_headers;
+static void d2x_headers_init(void) {
 	if (registered_function_headers == nullptr) {
-		registered_function_headers = new std::vector<xray_function_header*>();
+		registered_function_headers = new std::vector<d2x_function_header*>();
 	}
 }
 
-struct xray_register_header {
-	xray_register_header(struct xray_function_header *h) {
-		xray_headers_init();
+struct d2x_register_header {
+	d2x_register_header(struct d2x_function_header *h) {
+		d2x_headers_init();
 		registered_function_headers->push_back(h);
 	}	
 };
 
-struct xray_context {
+struct d2x_context {
 	// Register info
 	uint64_t rip;
 	uint64_t rsp;
@@ -83,7 +83,7 @@ struct xray_context {
 	uint64_t load_offset;
 
 	uint64_t function;
-	xray_function_header* header;	
+	d2x_function_header* header;	
 
 	int address_line;
 	int function_line;
@@ -96,11 +96,11 @@ struct xray_context {
 };
 
 
-struct xray_context find_context(void* ip, void* sp, void* bp, void* bx);
-std::string get_backtrace(struct xray_context ctx);
-std::string get_listing(struct xray_context ctx);
-std::string get_frame(struct xray_context ctx, const char*);
-std::string get_vars(struct xray_context ctx, const char*);
+struct d2x_context find_context(void* ip, void* sp, void* bp, void* bx);
+std::string get_backtrace(struct d2x_context ctx);
+std::string get_listing(struct d2x_context ctx);
+std::string get_frame(struct d2x_context ctx, const char*);
+std::string get_vars(struct d2x_context ctx, const char*);
 
 namespace rtv {
 	void* find_stack_var(std::string varname);

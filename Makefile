@@ -1,15 +1,11 @@
 -include Makefile.inc
 
-
-
-LIBRARY_NAME=xray
+LIBRARY_NAME=d2x
 BASE_DIR=$(shell pwd)
 SRC_DIR=$(BASE_DIR)/src
 SAMPLES_DIR=$(BASE_DIR)/samples
 BUILD_DIR?=$(BASE_DIR)/build
 INCLUDE_DIR=$(BASE_DIR)/include
-
-BUILDIT_DIR?=$(BASE_DIR)/deps/buildit
 
 INCLUDES=$(wildcard $(INCLUDE_DIR)/*.h) $(wildcard $(INCLUDE_DIR)/*/*.h) 
 
@@ -110,4 +106,4 @@ compile-flags:
 linker-flags:
 	@echo $(LINKER_FLAGS)
 gdb-command:
-	@echo gdb --command=$(BASE_DIR)/helpers/gdb/xray-gdb.init
+	@echo gdb --command=$(BASE_DIR)/helpers/gdb/d2x-gdb.init

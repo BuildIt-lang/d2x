@@ -1,4 +1,4 @@
-#include "xray/xray.h"
+#include "d2x/d2x.h"
 #include <iostream>
 
 #define STR1(x)  #x
@@ -8,9 +8,9 @@
 int main(int argc, char* argv[]) {
 
 	std::cout << "#include <stdio.h>\n";
-	std::cout << "#include \"xray_runtime/xray_runtime.h\"\n";
+	std::cout << "#include \"d2x_runtime/d2x_runtime.h\"\n";
 
-	xray::xray_context context;
+	d2x::d2x_context context;
 	
 	std::cout << context.begin_section();
 	

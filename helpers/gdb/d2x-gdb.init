@@ -1,0 +1,28 @@
+define xctx
+	print d2x::runtime::find_context((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx)
+end
+define xbt
+	call d2x::runtime::cmd::xbt((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx)
+end
+define xlist
+	call d2x::runtime::cmd::xlist((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx)
+end
+define xframe
+	if $argc == 0
+		call d2x::runtime::cmd::xframe((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx, "")
+	end
+	if $argc == 1
+		call d2x::runtime::cmd::xframe((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx, "$arg0")
+	end	
+end
+define xvars
+	if $argc == 0
+		call d2x::runtime::cmd::xvars((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx, "")
+	end
+	if $argc == 1
+		call d2x::runtime::cmd::xvars((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx, "$arg0")
+	end	
+end
+define xfvl 	
+	call d2x::runtime::cmd::xfvl((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx, "$arg0")
+end
