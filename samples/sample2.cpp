@@ -6,6 +6,7 @@
 #define BASE_DIR STR(BASE_DIR_X)
 
 static builder::dyn_var<char*(int*)> to_str(builder::as_global("std::to_string"));	
+static builder::dyn_var<void*(void*)> to_int_p(builder::as_global("(int*)"));
 
 int main(int argc, char* argv[]) {
 
@@ -23,7 +24,7 @@ int main(int argc, char* argv[]) {
 
 	d2x::runtime_value_resolver r1 ([&](auto v) -> auto {
 		//return "Value of " + v;
-		builder::dyn_var<int*> addr = d2x::rt::find_stack_var(v);
+		builder::dyn_var<int*> addr = to_int_p(d2x::rt::find_stack_var(v));
 		return "Value of " + v + " = " + to_str(addr[0]);
 	});
 

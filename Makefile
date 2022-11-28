@@ -58,11 +58,16 @@ LINKER_FLAGS+=-l$(LIBRARY_NAME)
 endif
 
 
+BUILDIT_CFLAGS=$(shell make --no-print-directory -C $(BUILDIT_DIR) compile-flags)
+BUILDIT_LINK_FLAGS=$(shell make --no-print-directory -C $(BUILDIT_DIR) linker-flags)
+
+
+
 CFLAGS_INTERNAL+=-Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wmissing-declarations -Woverloaded-virtual -Wno-deprecated -Wdelete-non-virtual-dtor -Werror -Wno-vla 
-INCLUDE_FLAGS=-I$(INCLUDE_DIR) -I$(BUILDIT_DIR)/include/
+INCLUDE_FLAGS=-I$(INCLUDE_DIR) $(BUILDIT_CFLAGS)
 CFLAGS_INTERNAL+=-pedantic-errors
 
-LINKER_FLAGS+=-L$(BUILD_DIR)/ -L$(BUILDIT_DIR)/build/ -lbuildit
+LINKER_FLAGS+=-L$(BUILD_DIR)/ $(BUILDIT_LINK_FLAGS)
 
 SRC=$(wildcard $(SRC_DIR)/*.cpp)
 SAMPLE_SRC=$(wildcard $(SAMPLES_DIR)/*.cpp)
@@ -77,6 +82,7 @@ LIBRARY=$(BUILD_DIR)/lib$(LIBRARY_NAME).a
 
 all: $(LIBRARY) executables
 
+lib: $(LIBRARY)
 
 .PRECIOUS: $(BUILD_DIR)/%.o $(BUILD_DIR)/samples/%.o
 

@@ -130,7 +130,11 @@ void d2x_context::emit_function_info(std::ostream &oss) {
 	// Before we emit any datastructures, we should emit the resolvers
 	for (auto r: used_resolvers) {
 		r->gen_resolver();
-		block::c_code_generator::generate_code(r->resolver, oss, 0);
+		block::c_code_generator generator(oss);
+		generator.curr_indent = 0;
+		generator.use_d2x = false;
+		r->resolver->accept(&generator);
+		oss << std::endl;	
 		emitted_resolvers.push_back(r);
 	}
 
