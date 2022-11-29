@@ -89,6 +89,7 @@ Dwarf_Die find_cu_die(Dwarf_Debug dbg, uint64_t addr) {
 				return die;
 		}
 	}
+	return NULL;
 }
 
 
