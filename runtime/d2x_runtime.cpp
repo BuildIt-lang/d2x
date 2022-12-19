@@ -319,7 +319,7 @@ std::string get_frame(struct d2x_context ctx, const char* update_frame) {
 	std::stringstream oss;
 	int line_offset = ctx.address_line - ctx.function_line;
 	struct d2x_source_stack stack = ctx.header->source_table[line_offset];
-	if (new_frame > 0) {
+	if (new_frame >= 0) {
 		if (new_frame < stack.stack_size) 
 			current_frame_index = new_frame;
 		else 
