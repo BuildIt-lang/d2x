@@ -101,7 +101,7 @@ std::string get_backtrace(struct d2x_context ctx);
 std::string get_listing(struct d2x_context ctx);
 std::string get_frame(struct d2x_context ctx, const char*);
 std::string get_vars(struct d2x_context ctx, const char*);
-
+std::string get_break(struct d2x_context ctx, const char* source_spec, std::ostream &output_command_file);
 namespace rtv {
 	void* find_stack_var(std::string varname);
 }
@@ -114,6 +114,7 @@ void xlist(void* ip, void* sp, void* bp, void* bx);
 void xframe(void* ip, void* sp, void* bp, void* bx, const char*);
 void xvars(void* ip, void* sp, void* bp, void* bx, const char*);
 void xfvl(void* ip, void* sp, void* bp, void* bx, const char*);
+const char* xbreak(void* ip, void* sp, void* bp, void* bx, const char* source_spec);
 }
 /* End of API functions */
 

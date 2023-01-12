@@ -351,7 +351,20 @@ std::string get_frame(struct d2x_context ctx, const char* update_frame) {
 	return oss.str();	
 }
 
+std::string get_xfilename_ctx(struct d2x_context ctx) {
+	if (ctx.header == nullptr)
+		return "";
+	if (ctx.address_line == -1 || ctx.function_line == -1)
+		return "";
+	int line_offset = ctx.address_line - ctx.function_line;
+	struct d2x_source_stack stack = ctx.header->source_table[line_offset];
+	struct d2x_source_loc *locs = ctx.header->source_list;
+	const char** string_table = ctx.header->string_table;
+	struct d2x_source_loc loc = locs[current_frame_index + stack.stack_offset];
 
+	std::string filename = string_table[loc.filename];
+	return filename;	
+}
 
 static struct d2x_context* active_frame_ctx = nullptr;
 
@@ -449,6 +462,7 @@ static void* decode_address_from_die(Dwarf_Debug dbg, Dwarf_Die die, uint64_t fr
 		
 		//std::cout << "For variable, the location has no_of_elems = " << no_of_elements << std::endl;
 	}
+	return NULL;
 }
 
 static void* find_var_address_in_subprogram(Dwarf_Debug dbg, Dwarf_Die die, uint64_t pc, const char* varname, uint64_t frame_base) {	
@@ -636,6 +650,134 @@ std::string get_vars(struct d2x_context ctx, const char* varname) {
 	return oss.str();
 }
 
+static bool ends_with(const std::string& value, const std::string& ending) {
+    if (ending.size() > value.size()) return false;
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
+static bool compare_paths(std::string spec_path, std::string path) {
+	if (spec_path[0] == '/') {
+		return spec_path == path;
+	} else {
+		return ends_with(path, spec_path);
+	}
+}
+
+static std::vector<std::pair<std::string, int>> find_all_breaks(struct d2x_context ctx, std::string spec_filename, int spec_line_no) {
+	std::vector<std::pair<std::string, int>> to_ret;
+
+	for (auto header: *registered_function_headers) {
+		if (header->identified_filename == NULL || header->identified_line == -1)
+			continue;	
+		// For each header iterate through each line and check if it has the source_spec at the "top" of 
+		// the extended stack
+		
+		struct d2x_source_loc *locs = ctx.header->source_list;
+		const char** string_table = ctx.header->string_table;
+
+		for (int line_no = 0; line_no < header->source_table_len; line_no++) {
+			struct d2x_source_stack stack = ctx.header->source_table[line_no];
+			struct d2x_source_loc loc = locs[0 + stack.stack_offset];
+			// This is the extended source of the top of the stack 
+			// for the generated line of code
+			int linenumber = loc.linenumber;
+			std::string filename = string_table[loc.filename];
+			if (compare_paths(spec_filename, filename) && linenumber == spec_line_no) {
+				to_ret.push_back(std::make_pair(header->identified_filename, header->identified_line + line_no));
+			}
+		}
+	}
+	return to_ret;	
+}
+
+static std::vector<std::pair<std::string, int>> break_points_records;
+static std::vector<std::vector<std::pair<std::string, int>>> break_points_map;
+static std::vector<int> break_points_status;
+
+std::string get_break(struct d2x_context ctx, const char* source_spec, std::ostream &output_command_file) {
+	std::stringstream oss;
+	// There are two types of source_specs
+	// 1. just line number - this takes the filename (full path) from the from the current ctx and the specified line number
+	// 2. <filename>:<linenumber> - Filename can be a full path or just the filename and a line number
+	std::string spec = source_spec;
+	if (spec == "") {
+		// Just list all the breakpoints
+		oss << "Following breakpoints exist:" << std::endl;
+		int index = 0;
+		for (auto b: break_points_map) {
+			if (break_points_status[index] == 3) {
+				index++;
+				continue;
+			}
+			oss << "#" << index << " [" << (break_points_status[index] == 1 ? "ENABLED": "DISABLED") << "] " 
+				<< break_points_records[index].first << ":" << break_points_records[index].second << std::endl;
+			index++;
+		}
+		return oss.str();
+	}
+	std::string filename;
+	static char filename_s[1024];		
+	int line_no;
+	if (sscanf(source_spec, "%[^:]:%d", filename_s, &line_no) == 2) {
+		filename = filename_s;
+	} else if (sscanf(source_spec, "%d", &line_no) == 1) {
+		filename = get_xfilename_ctx(ctx);
+		if (filename == "") {
+			oss << "Cannot identify extended stack information for current location, aborting!" << std::endl;
+			return oss.str();
+		}
+	} else {
+		oss << "Command requires a source spec of the form [<filename>:]<linenumber>" << std::endl;
+		return oss.str();
+	}
+	
+	std::vector<std::pair<std::string, int>> break_point_locs = find_all_breaks(ctx, filename, line_no);
+	for (auto b: break_point_locs) {
+		output_command_file << "break " << b.first << ":" << b.second << std::endl;
+	}
+	oss << "Inserting " << break_point_locs.size() << " breakpoints with ID: #" << break_points_map.size()  << std::endl;
+	
+	// Breakpoint status
+	// 1 - Active
+	// 2 - Disabled
+	// 3 - Deleted
+
+	break_points_status.push_back(1);
+	break_points_map.push_back(std::move(break_point_locs));
+	break_points_records.push_back(std::make_pair(filename, line_no));
+
+	return oss.str();
+}
+
+std::string get_del(struct d2x_context ctx, const char* source_spec, std::ostream &output_command_file) {
+	std::stringstream oss;
+	// There is only one type of inputs for del
+	// 1. Break point id of the form #id
+	std::string spec = source_spec;
+	if (spec == "") {
+		oss << "Command requires a breakpoint id (#<id>). Run xbreak without any parameters to list all breakpoints" << std::endl;
+		return oss.str();
+	}
+	int break_id = -1;
+	if (sscanf(source_spec, "#%d", &break_id) != 1) {
+		oss << "Command requires a breakpoint id (#<id>). Run xbreak without any parameters to list all breakpoints" << std::endl;
+		return oss.str();
+	}
+	if (break_id < 0 || break_id >= break_points_records.size() || break_points_status[break_id] == 3) {
+		oss << "ID #" << break_id << " is not a valid break point. Run xbreak without any parameters to list all breakpoints" << std::endl;
+		return oss.str();
+	}
+	
+	for (auto b: break_points_map[break_id]) {
+		output_command_file << "clear " << b.first << ":" << b.second << std::endl;
+	}
+	oss << "Deleting " << break_points_map[break_id].size() << " breakpoints for ID: #" << break_id << std::endl;
+	break_points_status[break_id] = 3;
+	
+	return oss.str();
+}
+
+
 void print_output(std::string s) {
 	std::cout << s;
 }
@@ -656,6 +798,30 @@ void xvars(void* ip, void* sp, void* bp, void* bx, const char* varname) {
 }
 void xfvl(void* ip, void* sp, void* bp, void* bx, const char* varname) {
 	print_output(get_fvl(find_context(ip, sp, bp, bx), varname));
+}
+// xbreak generates a command sequence to be executed besides the output
+static char ret_command_buffer[1024];
+const char* xbreak(void* ip, void* sp, void* bp, void* bx, const char* source_spec) {
+	const char* filename = ".d2x.commands";	
+	std::ofstream output_file;
+	output_file.open(filename);			
+	print_output(get_break(find_context(ip, sp, bp, bx), source_spec, output_file));
+	// Clean up the command file after it executes
+	output_file << std::endl << "shell rm -f " << filename << std::endl;
+	output_file.close();
+	sprintf(ret_command_buffer, "source %s", filename);
+	return ret_command_buffer;
+}
+const char* xdel(void* ip, void* sp, void* bp, void* bx, const char* source_spec) {
+	const char* filename = ".d2x.commands";	
+	std::ofstream output_file;
+	output_file.open(filename);			
+	print_output(get_del(find_context(ip, sp, bp, bx), source_spec, output_file));
+	// Clean up the command file after it executes
+	output_file << std::endl << "shell rm -f " << filename << std::endl;
+	output_file.close();
+	sprintf(ret_command_buffer, "source %s", filename);
+	return ret_command_buffer;
 }
 }
 }

@@ -7,6 +7,18 @@ end
 define xlist
 	call d2x::runtime::cmd::xlist((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx)
 end
+define xbreak
+	if $argc == 0
+		eval "%s", d2x::runtime::cmd::xbreak((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx, "")
+	end
+	if $argc == 1
+		eval "%s", d2x::runtime::cmd::xbreak((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx, "$arg0")
+	end
+end
+define xdel
+	eval "%s", d2x::runtime::cmd::xdel((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx, "$arg0")
+end
+
 define xframe
 	if $argc == 0
 		call d2x::runtime::cmd::xframe((void*)$rip, (void*)$rsp, (void*)$rbp, (void*)$rbx, "")
