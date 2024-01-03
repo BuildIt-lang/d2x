@@ -15,7 +15,7 @@ namespace util {
 
 static std::map<std::string, Dwarf_Debug> debug_map;
 
-static int find_debug_info(const char* filename, Dwarf_Debug* ret) {
+int find_debug_info(const char* filename, Dwarf_Debug* ret) {
 	std::string path = filename;
 	if (debug_map.find(path) != debug_map.end()) {
 		*ret = debug_map[path];
@@ -49,7 +49,7 @@ static int dbg_step_cu(Dwarf_Debug dbg) {
 	return dwarf_next_cu_header_d(dbg, true, &hl, &st, &off, &as, &ls, &xs, &ts, &to, &nco, &ct, &de);
 }
 
-static Dwarf_Die find_cu_die(Dwarf_Debug dbg, uint64_t addr) {
+Dwarf_Die find_cu_die(Dwarf_Debug dbg, uint64_t addr) {
 	int ret;
 	Dwarf_Error de;
 	Dwarf_Die die, ret_die;
@@ -89,7 +89,7 @@ static Dwarf_Die find_cu_die(Dwarf_Debug dbg, uint64_t addr) {
 }
 
 
-static void reset_cu(Dwarf_Debug dbg) {
+void reset_cu(Dwarf_Debug dbg) {
 	int ret;
 	while ((ret = dbg_step_cu(dbg)) != DW_DLV_NO_ENTRY) {
 		if (ret == DW_DLV_ERROR) {
@@ -175,7 +175,7 @@ static void find_function_info_with_dbg(Dwarf_Debug dbg, Dwarf_Die die, uint64_t
 	}
 }
 
-static void find_line_info_with_dbg(Dwarf_Debug dbg, uint64_t addr, int *line_no, const char** fname, std::string &function_name, std::string &linkage_name) {
+void find_line_info_with_dbg(Dwarf_Debug dbg, uint64_t addr, int *line_no, const char** fname, std::string &function_name, std::string &linkage_name) {
 	*line_no = -1;
 	*fname = NULL;
 	Dwarf_Die cu_die = find_cu_die(dbg, addr);
@@ -185,7 +185,7 @@ static void find_line_info_with_dbg(Dwarf_Debug dbg, uint64_t addr, int *line_no
 	Dwarf_Signed lcount;
 	Dwarf_Line *lbuf;
 	Dwarf_Addr lineaddr, plineaddr = ~0ULL;
-	Dwarf_Unsigned lineno, plineno;	
+	Dwarf_Unsigned lineno, plineno = 0;
 
 	char* filename = NULL;
 	char* pfilename = NULL;

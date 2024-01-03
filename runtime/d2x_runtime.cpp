@@ -63,7 +63,7 @@ struct d2x_context find_context(void* ip, void* sp, void* bp, void* bx) {
 
 
 	Dwarf_Debug dbg;
-	if (find_debug_info(ctx.dli_fname, &dbg)) {
+	if (util::find_debug_info(ctx.dli_fname, &dbg)) {
 		return ctx;
 	}
 	ctx.dbg = dbg;
@@ -72,7 +72,7 @@ struct d2x_context find_context(void* ip, void* sp, void* bp, void* bx) {
 	int line_no = -1;
 	const char* fname = NULL;
 	std::string func_name, linkage_name;	
-	find_line_info_with_dbg(dbg, adjusted_ip, &line_no, &fname, func_name, linkage_name);
+	util::find_line_info_with_dbg(dbg, adjusted_ip, &line_no, &fname, func_name, linkage_name);
 	ctx.address_line = line_no;	
 	ctx.src_filename = fname;
 	
@@ -85,7 +85,7 @@ struct d2x_context find_context(void* ip, void* sp, void* bp, void* bx) {
 			int line_no = -1;
 			const char* fname = NULL;
 			uint64_t adjusted_ip = (uint64_t)header->function_addr - (uint64_t)ctx.load_offset;
-			find_line_info(dbg, adjusted_ip, &line_no, &fname, func_name, linkage_name);
+			util::find_line_info_with_dbg(dbg, adjusted_ip, &line_no, &fname, func_name, linkage_name);
 			header->identified_filename = fname;
 			header->identified_line = line_no;
 		}
@@ -448,7 +448,7 @@ static void* find_var_loc(struct d2x_context ctx, const char* varname) {
 	// We have obtained the base register
 	// Now to find the address of the variable
 	uint64_t adjusted_ip = (uint64_t)ctx.rip - (uint64_t)ctx.load_offset;
-	Dwarf_Die cu_die = find_cu_die(ctx.dbg, adjusted_ip);
+	Dwarf_Die cu_die = util::find_cu_die(ctx.dbg, adjusted_ip);
 	if (cu_die == NULL) 
 		goto cleanup;	
 	
@@ -459,7 +459,7 @@ static void* find_var_loc(struct d2x_context ctx, const char* varname) {
 cleanup:
 	if (cu_die != NULL)
 		dwarf_dealloc(ctx.dbg, cu_die, DW_DLA_DIE);
-	reset_cu(ctx.dbg);
+	util::reset_cu(ctx.dbg);
 	
 	return ret_val;	
 }
