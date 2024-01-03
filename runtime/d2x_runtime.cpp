@@ -1,4 +1,5 @@
 #include "d2x_runtime/d2x_runtime.h"
+#include "d2x/utils.h"
 #include <unistd.h>
 #include <fcntl.h>
 #include <map>
@@ -16,140 +17,6 @@ namespace runtime {
 
 std::vector<d2x_function_header*> *registered_function_headers = nullptr;
 
-
-static std::map<std::string, Dwarf_Debug> debug_map;
-
-int find_debug_info(const char* filename, Dwarf_Debug* ret) {
-	std::string path = filename;
-	if (debug_map.find(path) != debug_map.end()) {
-		*ret = debug_map[path];
-		return 0;
-	}
-	// Allocate a new debug map
-	Dwarf_Debug to_ret;
-	Dwarf_Error de;
-	int fd = open(filename, O_RDONLY);
-	if (fd < 0) {
-		return -1;
-	}	
-	if (dwarf_init(fd, DW_DLC_READ, NULL, NULL, &to_ret, &de)) {
-		close(fd);
-		return -1;
-	}
-	debug_map[path] = to_ret;
-	*ret = to_ret;
-	return 0;	
-}
-
-int dbg_step_cu(Dwarf_Debug dbg) {
-	Dwarf_Error de;
-	Dwarf_Unsigned hl;
-	Dwarf_Half st;
-	Dwarf_Off off;
-	Dwarf_Half as, ls, xs;
-	Dwarf_Sig8 ts;
-	Dwarf_Unsigned to, nco;
-	Dwarf_Half ct;
-	return dwarf_next_cu_header_d(dbg, true, &hl, &st, &off, &as, &ls, &xs, &ts, &to, &nco, &ct, &de);
-}
-
-Dwarf_Die find_cu_die(Dwarf_Debug dbg, uint64_t addr) {
-	int ret;
-	Dwarf_Error de;
-	Dwarf_Die die, to_ret, ret_die;
-	Dwarf_Unsigned lopc, hipc;
-	Dwarf_Half tag;
-	Dwarf_Half ret_form;
-	enum Dwarf_Form_Class ret_class;
-	while ((ret = dbg_step_cu(dbg)) == DW_DLV_OK) {
-		die = NULL;
-		while (dwarf_siblingof(dbg, die, &ret_die, &de) == DW_DLV_OK) {
-			if (die != NULL)
-				dwarf_dealloc(dbg, die, DW_DLA_DIE);
-			die = ret_die;
-			if (dwarf_tag(die, &tag, &de) != DW_DLV_OK)
-				continue;
-			if (tag == DW_TAG_compile_unit)
-				break;		
-		}
-		if (ret_die == NULL) {
-			if (die != NULL) {
-				dwarf_dealloc(dbg, die, DW_DLA_DIE);
-				die = NULL;		
-			}
-			continue;
-		}
-		if (dwarf_lowpc(die, &lopc, &de) == DW_DLV_OK) {
-			if (!(dwarf_highpc_b(die, &hipc, &ret_form, &ret_class, &de) == DW_DLV_OK)) {
-				hipc = ~0ULL;	
-			}
-			if (ret_class == DW_FORM_CLASS_CONSTANT)
-				hipc += lopc;
-			if (addr >= lopc && addr < hipc)
-				return die;
-		}
-	}
-	return NULL;
-}
-
-
-void reset_cu(Dwarf_Debug dbg) {
-	Dwarf_Error de;	
-	int ret;
-	while ((ret = dbg_step_cu(dbg)) != DW_DLV_NO_ENTRY) {
-		if (ret == DW_DLV_ERROR) {
-			return;
-		}
-	}
-}
-
-void find_line_info(Dwarf_Debug dbg, uint64_t addr, int *line_no, const char** fname) {
-	*line_no = -1;
-	*fname = NULL;
-	Dwarf_Die cu_die = find_cu_die(dbg, addr);
-	Dwarf_Error de;
-	if (cu_die == NULL)
-		return;
-	Dwarf_Signed lcount;
-	Dwarf_Line *lbuf;
-	Dwarf_Addr lineaddr, plineaddr = ~0ULL;
-	Dwarf_Unsigned lineno, plineno;	
-		
-	char* filename = NULL;
-	char* pfilename = NULL;
-
-	int ret = dwarf_srclines(cu_die, &lbuf, &lcount, &de);
-	if (ret != DW_DLV_OK) {
-		goto cleanup;
-	}	
-	int i;
-	for (i = 0; i < lcount; i++) {
-		if (dwarf_lineaddr(lbuf[i], &lineaddr, &de))
-			goto cleanup;
-		if (dwarf_lineno(lbuf[i], &lineno, &de))
-			goto cleanup;
-		if (dwarf_linesrc(lbuf[i], &filename, &de))
-			goto cleanup;
-
-		if (addr == lineaddr) {
-			*line_no = lineno;	
-			*fname = filename;
-			break;
-		} else if (addr < lineaddr && addr > plineaddr) {
-			*line_no = plineno;
-			*fname = pfilename;
-			break;	
-		}
-		
-		plineaddr = lineaddr;
-		plineno = lineno;
-		pfilename = filename;
-	}
-cleanup:	
-	if (cu_die != NULL)
-		dwarf_dealloc(dbg, cu_die, DW_DLA_DIE);
-	reset_cu(dbg);			
-}
 
 static void* last_ip = NULL;
 static void* last_sp = NULL;
@@ -204,7 +71,8 @@ struct d2x_context find_context(void* ip, void* sp, void* bp, void* bx) {
 	uint64_t adjusted_ip = ctx.rip - ctx.load_offset;
 	int line_no = -1;
 	const char* fname = NULL;
-	find_line_info(dbg, adjusted_ip, &line_no, &fname);
+	std::string func_name, linkage_name;	
+	find_line_info_with_dbg(dbg, adjusted_ip, &line_no, &fname, func_name, linkage_name);
 	ctx.address_line = line_no;	
 	ctx.src_filename = fname;
 	
@@ -217,7 +85,7 @@ struct d2x_context find_context(void* ip, void* sp, void* bp, void* bx) {
 			int line_no = -1;
 			const char* fname = NULL;
 			uint64_t adjusted_ip = (uint64_t)header->function_addr - (uint64_t)ctx.load_offset;
-			find_line_info(dbg, adjusted_ip, &line_no, &fname);
+			find_line_info(dbg, adjusted_ip, &line_no, &fname, func_name, linkage_name);
 			header->identified_filename = fname;
 			header->identified_line = line_no;
 		}
