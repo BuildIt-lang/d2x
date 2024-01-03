@@ -7,7 +7,9 @@ SAMPLES_DIR=$(BASE_DIR)/samples
 BUILD_DIR?=$(BASE_DIR)/build
 INCLUDE_DIR=$(BASE_DIR)/include
 
-INCLUDES=$(wildcard $(INCLUDE_DIR)/*.h) $(wildcard $(INCLUDE_DIR)/*/*.h) 
+INCLUDES=$(wildcard $(INCLUDE_DIR)/*.h) $(wildcard $(INCLUDE_DIR)/*/*.h)
+INCLUDES+=$(wildcard $(BUILDIT_DIR)/include/*.h) $(wildcard $(BUILDIT_DIR)/include/*/*.h) 
+INCLUDES+=$(BUILDIT_DIR)/build/gen_headers/gen/compiler_headers.h
 
 
 DEBUG ?= 0
